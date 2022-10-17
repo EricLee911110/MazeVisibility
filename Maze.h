@@ -22,6 +22,11 @@
 #include <FL/math.h> // Use FLTK's math header because it defines M_PI
 #include "Cell.h"
 
+// additional headers
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include "LineSeg.h"
+
 //************************************************************************
 //
 // * A class for exceptions. Used by the constructor to pass file I/O errors
@@ -68,7 +73,15 @@ class Maze {
 
 	public:
 		// A big ******* wall comming right up
-		void Draw_Wall(const float start[2], const float end[2], const float color[3]);
+
+		bool clip(LineSeg frustum_side, glm::vec4& start, glm::vec4& end);
+		static void set_aspect_from_MazeWindow(float aspect_from_MazeWindow);
+
+		// Perspective in Maze.cpp
+		static void myPerspective(float fovInDegrees, float aspect, float znear, float zfar);
+		static void myLookAt(float camPosition3Dx, float camPosition3Dy, float camPosition3Dz,
+			float center3Dx, float center3Dy, float center3Dz,
+			float upVector3Dx, float upVector3Dy, float upVector3Dz);
 		
 		
 		// Set the viewer's location 

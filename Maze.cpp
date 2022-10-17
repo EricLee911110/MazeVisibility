@@ -31,7 +31,27 @@
 #include <GL/glu.h>
 #include <stdio.h>
 #include <iostream>
+#include "LineSeg.h"
 using namespace std;
+
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
+
+
+using namespace std;
+void myPerspective(float fovInDegrees, float aspect, float znear, float zfar);		// identifier not found
+void myFrustum(float* matrix, float left, float right, float bottom, float top, float znear, float zfar);		// identifier not found
+
+float projection[16];
+float view[16];
+float transform[16];
+float aspect = 0.0f;
+
+float my_near = 0.01f;
+float my_far = 200.0f;
+
+
 
 const char Maze::X = 0;
 const char Maze::Y = 1;
@@ -629,6 +649,230 @@ Draw_Map(int min_x, int min_y, int max_x, int max_y)
 }
 
 
+void Maze::
+set_aspect_from_MazeWindow(float aspect_from_MazeWindow) {
+	aspect = aspect_from_MazeWindow;
+
+	// cout << "aspect set!!: " << aspect << endl;
+}
+
+bool clip(LineSeg frustum_side, glm::vec4& start, glm::vec4& end) {
+	char s_side = frustum_side.Point_Side(start[0], start[2]);
+	char e_side = frustum_side.Point_Side(end[0], end[2]);
+	if (s_side == 1) {		// 1 if right, start at right
+		if (e_side == 0) {	// 0 if left  // start right, end left
+			float percent = frustum_side.Cross_Param(LineSeg(start[0], start[2], end[0], end[2]));
+			end[0] = frustum_side.start[0] + (frustum_side.end[0] - frustum_side.start[0]) * percent;
+			end[2] = frustum_side.start[1] + (frustum_side.end[1] - frustum_side.start[1]) * percent;
+		}
+	}
+	else if (e_side == 1) {		// start is left, end is right
+		float percent = frustum_side.Cross_Param(LineSeg(start[0], start[2], end[0], end[2]));
+		start[0] = frustum_side.start[0] + (frustum_side.end[0] - frustum_side.start[0]) * percent;
+		start[2] = frustum_side.start[1] + (frustum_side.end[1] - frustum_side.start[1]) * percent;
+	}
+	else {						// start left, end left
+		return false;
+	}
+	return true;
+}
+
+void myMatrixMul(float* vec, float* matrix) {
+	float result[4];
+
+	result[0] = matrix[0] * vec[0] + matrix[4] * vec[1] + matrix[8] * vec[2] + matrix[12] * vec[3];
+	result[1] = matrix[1] * vec[0] + matrix[5] * vec[1] + matrix[9] * vec[2] + matrix[13] * vec[3];
+	result[2] = matrix[2] * vec[0] + matrix[6] * vec[1] + matrix[10] * vec[2] + matrix[14] * vec[3];
+	result[3] = matrix[3] * vec[0] + matrix[7] * vec[1] + matrix[11] * vec[2] + matrix[15] * vec[3];
+
+
+	vec[0] = result[0];
+	vec[1] = result[1];
+	vec[2] = result[2];
+	vec[3] = result[3];
+
+
+
+}
+
+void Draw_Wall(LineSeg wall, LineSeg L, LineSeg R) {
+	
+	float start[4] = {wall.start[1], 1.0f, wall.start[0], 1.0f};
+	float end[4] = {wall.end[1], 1.0f, wall.end[0], 1.0f};
+
+	cout << "before view start: " << start[0] << " " << start[2] << endl;
+	cout << "before view end: " << end[0] << " " << end[2] << endl;
+
+	
+	myMatrixMul(start, view);
+	myMatrixMul(end, view);
+
+	cout << "after view start: " << start[0] << " " << start[2] << endl;
+	cout << "after view end: " << end[0] << " " << end[2] << endl;
+
+	myMatrixMul(start, projection);
+	myMatrixMul(end, projection);
+
+	cout << "after projection start: " << start[0] << " " << start[2] << endl;
+	cout << "after projection end: " << end[0] << " " << end[2] << endl;
+
+	/*
+	if (!clip(L, start, end) || !clip(R, start, end)) return;
+
+
+	cout << "after clipping start: " << start[0] << " " << start[2] << endl;
+	cout << "after clipping end: " << end[0] << " " << end[2] << endl;
+
+	start = projection * start;
+	end = projection * end;
+	*/
+
+	
+
+
+	glBegin(GL_POLYGON);
+	glColor3f(0.0f, 1.0f, 0.0f);
+
+	glVertex4f(start[0], -1, start[2], 1);
+	glVertex4f(end[0], -1, end[2], 1);
+	glVertex4f(end[0], 1, end[2], 1);
+	glVertex4f(start[0], 1, start[2], 1);
+
+	/*
+	glVertex2f(start[0], start[1]);
+	glVertex2f(end[0], end[1]);
+	glVertex2f(end[0], -end[1]);
+	glVertex2f(start[0], -start[1]);
+	*/
+	glEnd();
+
+}
+
+
+
+
+
+
+// for more detail how this matrix work: https://www.khronos.org/opengl/wiki/GluPerspective_code
+void Maze::
+myPerspective(float fovInDegrees, float aspect, float znear, float zfar) {
+
+	float matrix[16];
+	float ymax, xmax;
+
+	ymax = znear * tanf(fovInDegrees * M_PI / 360.0);
+	xmax = ymax * aspect;
+
+	myFrustum(matrix, -xmax, xmax, -ymax, ymax, znear, zfar);
+}
+
+void myFrustum(float* matrix, float left, float right, float bottom, float top, float znear, float zfar) {
+	float temp, temp2, temp3, temp4;
+	temp = 2.0 * znear;
+	temp2 = right - left;
+	temp3 = top - bottom;
+	temp4 = zfar - znear;
+	projection[0] = temp / temp2;
+	projection[1] = 0.0f;
+	projection[2] = 0.0f;
+	projection[3] = 0.0f;
+	projection[4] = 0.0f;
+	projection[5] = temp / temp3;
+	projection[6] = 0.0f;
+	projection[7] = 0.0f;
+	projection[8] = (right + left) / temp2;
+	projection[9] = (top + bottom) / temp3;
+	projection[10] = (-zfar - znear) / temp4;
+	projection[11] = -1.0;
+	projection[12] = 0.0;
+	projection[13] = 0.0;
+	projection[14] = (-temp * zfar) / temp4;
+	projection[15] = 0.0;
+}
+
+
+void NormalizeVector(float x[3]) {
+	float Norm = sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
+	x[0] /= Norm;
+	x[1] /= Norm;
+	x[2] /= Norm;
+}
+
+void myCross(float result[3], float A[3], float B[3]) {
+	result[0] = A[1] * B[2] - A[2] * B[1];
+	result[1] = A[2] * B[0] - A[0] * B[2];
+	result[2] = A[0] * B[1] - A[1] * B[0];
+}
+
+void Maze::
+myLookAt(float camPosition3Dx, float camPosition3Dy, float camPosition3Dz,
+	float center3Dx, float center3Dy, float center3Dz,
+	float upVector3Dx, float upVector3Dy, float upVector3Dz)
+{
+	cout << endl;
+	cout << "camPosition: " << camPosition3Dx << " " << camPosition3Dy << " " << camPosition3Dz << endl;
+	cout << "center: " << center3Dx << " " << center3Dy << " " << center3Dz << endl;
+
+	float forward[3], side[3], up[3];
+	
+	forward[0] = center3Dx - camPosition3Dx;
+	forward[1] = center3Dy - camPosition3Dy;
+	forward[2] = center3Dz - camPosition3Dz;
+	
+	
+	NormalizeVector(forward);
+
+	cout << "forward: " << forward[0] << " " << forward[1] << " " << forward[2] << endl;
+
+	float tmp[3] = { upVector3Dx ,upVector3Dy, upVector3Dz };
+	myCross(side, forward, tmp);
+	NormalizeVector(side);
+
+	cout << "side: " << side[0] << " " << side[1] << " " << side[2] << endl;
+
+	myCross(up, side, forward);
+
+	cout << "up: " << up[0] << " " << up[1] << " " << up[2] << endl;
+	
+	view[0] = side[0];
+	view[4] = side[1];
+	view[8] = side[2];
+	view[12] = 0.0f;
+	view[1] = up[0];
+	view[5] = up[1];
+	view[9] = up[2];
+	view[13] = 0.0f;
+	view[2] = -forward[0];
+	view[6] = -forward[1];
+	view[10] = -forward[2];
+	view[14] = 0.0f;
+	view[3] = 0.0f;
+	view[7] = 0.0f;
+	view[11] = 0.0f;
+	view[15] = 1.0f;
+	
+
+	
+	transform[0] = 1.0f;
+	transform[4] = 0.0f;
+	transform[8] = 0.0f;
+	transform[12] = -camPosition3Dx;
+	transform[1] = 0.0f;
+	transform[5] = 1.0f;
+	transform[9] = 0.0f;
+	transform[13] = -camPosition3Dy;
+	transform[2] = 0.0f;
+	transform[6] = 0.0f;
+	transform[10] = 1.0f;
+	transform[14] = -camPosition3Dz;
+	transform[3] = 0.0f;
+	transform[7] = 0.0f;
+	transform[11] = 0.0f;
+	transform[15] = 1.0f;
+	
+}
+
+
 //**********************************************************************
 //
 // * Draws the first-person view of the maze. It is passed the focal distance.
@@ -645,42 +889,107 @@ Draw_View(const float focal_dist)
 	// The rest is up to you!
 	//###################################################################
 
-	glEnable(GL_DEPTH_TEST);
+	// cout << "enable depth test" << endl;
+	// glEnable(GL_DEPTH_TEST);
+	// glLoadIdentity();
+	// glMultMatrixf((GLfloat*)&projection);
+	// glMultMatrixf((GLfloat*)&view);
+	// glMatrixMode(GL_PROJECTION);
+	// glMatrixMode(GL_MODELVIEW);
 
+	float viewer_pos[3] = { viewer_posn[Maze::Y], 0.0f, viewer_posn[Maze::X] };
 
+	
+	// glLoadMatrix(GL_PROJECTION);
+	// glLoadIdentity();
+	glLoadIdentity();
+
+	myPerspective(viewer_fov, aspect, my_near, my_far);
+	glMultMatrixf(projection);
+
+	//glLoadMatrixf(projection);
+	
+	/*
+	gluLookAt(viewer_pos[0], viewer_pos[1], viewer_pos[2],
+		viewer_pos[0] + sin(To_Radians(viewer_dir)),
+		viewer_pos[1], 
+		viewer_pos[2] + cos(To_Radians(viewer_dir)),
+		0.0, 1.0, 0.0);
+
+	*/
+
+	myLookAt(viewer_pos[0], viewer_pos[1], viewer_pos[2],
+		viewer_pos[0] + sin(To_Radians(viewer_dir)),
+		viewer_pos[1],
+		viewer_pos[2] + cos(To_Radians(viewer_dir)),
+		0.0, 1.0, 0.0);
+	glMultMatrixf(view);		// view is actually rotate
+	glMultMatrixf(transform);
+
+	cout << view[0] << " " << view[1] << " " << view[2] << " " << view[3] << endl;
+	cout << view[4] << " " << view[5] << " " << view[6] << " " << view[7] << endl;
+	cout << view[8] << " " << view[9] << " " << view[10] << " " << view[11] << endl;
+	cout << view[12] << " " << view[13] << " " << view[14] << " " << view[15] << endl;
+	
+
+	
+
+	glBegin(GL_POLYGON);
+	glColor3f(0.0f, 1.0f, 0.0f);
+
+	glVertex3f(0, -1, 0);
+	glVertex3f(6, -1, 0);
+	glVertex3f(6, 1, 0);
+	glVertex3f(0, 1, 0);
+	glEnd();
+	
+
+	
+	/*
+	LineSeg left_frustum(0, 0, cos(To_Radians(90 + viewer_fov / 2)), sin(To_Radians(90 + viewer_fov / 2)));
+	LineSeg right_frustum(0, 0, cos(To_Radians(90 - viewer_fov / 2)), sin(To_Radians(90 - viewer_fov / 2)));
+	cout << "left_frustum: " << left_frustum.end[0] << " " << left_frustum.end[1] << endl;
+	cout << "right_frustum: " << right_frustum.end[0] << " " << right_frustum.end[1] << endl;
+
+	
+	float color[3] = { 0.0f, 1.0f, 0.0f };
+	LineSeg wall(0, 0, 0, 6);
+	Draw_Wall(wall, left_frustum, right_frustum);
+	*/
+	
+	/*
 	for (int i = 0; i < num_edges; i++) {
 
-		float edge_start[2] = { edges[i]->endpoints[0]->posn[X], edges[i]->endpoints[0]->posn[Y] };
-		float edge_end[2] = { edges[i]->endpoints[1]->posn[X], edges[i]->endpoints[1]->posn[Y] };
+		glm::vec4 edge_start(edges[i]->endpoints[0]->posn[Y], 1.0f, edges[i]->endpoints[0]->posn[X], 1.0f);
+		glm::vec4 edge_end( edges[i]->endpoints[1]->posn[Y], 1.0f, edges[i]->endpoints[1]->posn[X], 1.0f);
 		float color[3] = { edges[i]->color[0], edges[i]->color[1], edges[i]->color[2]};
+		
+
+		
 		if (edges[i]->opaque) {
+
+			//std::cout << glm::to_string(view) << std::endl;
+
 			Draw_Wall(edge_start, edge_end, color);
 		}
 
 
 
 	}
+	*/
+
+	
+
+	
 
 
+	// std::cout << cells[0]->edges[0]->endpoints[0] << cells[0]->edges[0]->endpoints[1] << std::endl;
 
 	
 	
 
 }
 
-void Maze::
-Draw_Wall(const float start[2], const float end[2], const float color[3]) {
-	glBegin(GL_POLYGON);
-
-	glColor3fv(color);
-	glVertex3f(start[Y], -1.0f, start[X]);
-	glVertex3f(end[Y], -1.0f, end[X]);
-	glVertex3f(end[Y], 1.0f, end[X]);
-	glVertex3f(start[Y], 1.0f, start[X]);
-
-	glEnd();
-
-}
 
 
 //**********************************************************************

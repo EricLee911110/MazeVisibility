@@ -23,6 +23,13 @@
 #include <GL/glu.h>
 #include <stdio.h>
 
+// Additional headers
+#include <iostream>
+#include "Maze.h"
+
+using namespace std;
+
+
 
 //*************************************************************************
 //
@@ -82,10 +89,12 @@ draw(void)
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 	}
 
-	glMatrixMode(GL_PROJECTION);
+
+	// glMatrixMode(GL_PROJECTION);
+	// glLoadIdentity();
+	// glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	glClear(GL_DEPTH_BUFFER_BIT);
 
 	// Clear the screen.
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -95,20 +104,21 @@ draw(void)
 		// vertical, so we know it projects to cover the entire bottom
 		// half of the screen. Walls of the maze will be drawn over the top
 		// of it.
-		glColor3f(0.2f, 0.2f, 0.2f);
-		glVertex2f(-w() * 0.5f, -h() * 0.5f);
-		glVertex2f( w() * 0.5f, -h() * 0.5f);
-		glVertex2f( w() * 0.5f, 0.0       );
-		glVertex2f(-w() * 0.5f, 0.0       );
+	glColor3f(0.2f, 0.2f, 0.2f);
+	glVertex2f(-w() * 0.5f, -h() * 0.5f);
+	glVertex2f( w() * 0.5f, -h() * 0.5f);
+	glVertex2f( w() * 0.5f, 0.0       );
+	glVertex2f(-w() * 0.5f, 0.0       );
 
-		// Draw the ceiling. It will project to the entire top half
-		// of the window.
-		glColor3f(0.4f, 0.4f, 0.4f);
-		glVertex2f( w() * 0.5f,  h() * 0.5f);
-		glVertex2f(-w() * 0.5f,  h() * 0.5f);
-		glVertex2f(-w() * 0.5f, 0.0       );
-		glVertex2f( w() * 0.5f, 0.0       );
+	// Draw the ceiling. It will project to the entire top half
+	// of the window.
+	glColor3f(0.4f, 0.4f, 0.4f);
+	glVertex2f( w() * 0.5f,  h() * 0.5f);
+	glVertex2f(-w() * 0.5f,  h() * 0.5f);
+	glVertex2f(-w() * 0.5f, 0.0       );
+	glVertex2f( w() * 0.5f, 0.0       );
 	glEnd();
+
 
 
 	if ( maze ) {
@@ -118,25 +128,55 @@ draw(void)
 		// radians to degrees. There is also one defined for going backwards.
 		focal_length = w() / (float)(2.0*tan(Maze::To_Radians(maze->viewer_fov)*0.5));
 
-		glClear(GL_DEPTH_BUFFER_BIT);
+		/* This is useless?
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
+		*/
 
 		float aspect = (float)w() / h();
-		gluPerspective(maze->viewer_fov, aspect, 0.01, 200);
+		Maze::set_aspect_from_MazeWindow(aspect);
+		// cout << "original aspect: " << aspect << endl;
+		//gluPerspective(maze->viewer_fov, aspect, 0.01, 200);
+		// Maze::myPerspective(maze->viewer_fov, aspect, 0.01, 200);
 
+		/* Also useless?
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
+		*/
+		
 
 		float viewer_pos[3] = { maze->viewer_posn[Maze::Y], 0.0f, maze->viewer_posn[Maze::X] };
+
+		/*
+		Maze::myLookAt(viewer_pos[Maze::X], viewer_pos[Maze::Y], viewer_pos[Maze::Z],
+			viewer_pos[Maze::X] + sin(Maze::To_Radians(maze->viewer_dir)),
+			viewer_pos[Maze::Y],
+			viewer_pos[Maze::Z] + cos(Maze::To_Radians(maze->viewer_dir)),
+			0.0, 1.0, 0.0);
+		*/
+
+		cout << "viewer_dir: " << maze->viewer_dir << endl;
+		
+		/*
 		gluLookAt(viewer_pos[Maze::X], viewer_pos[Maze::Y], viewer_pos[Maze::Z],
 			viewer_pos[Maze::X] + sin(Maze::To_Radians(maze->viewer_dir)),
 			viewer_pos[Maze::Y],
 			viewer_pos[Maze::Z] + cos(Maze::To_Radians(maze->viewer_dir)),
 			0.0, 1.0, 0.0);
+		*/
+
+		/* draw a wall
+		glBegin(GL_POLYGON);
+		glColor3f(0.0f, 1.0f, 0.0f);
+
+		glVertex3f(0, -1, 0);
+		glVertex3f(6, -1, 0);
+		glVertex3f(6, 1, 0);
+		glVertex3f(0, 1, 0);
+		glEnd();
+		*/
 
 
-	
 		// Draw the 3D view of the maze (the visible walls.) You write this.
 		// Note that all the information that is required to do the
 		// transformations and projection is contained in the Maze class,
@@ -144,6 +184,8 @@ draw(void)
 		maze->Draw_View(focal_length);
 	}
 }
+
+
 
 
 //*************************************************************************
