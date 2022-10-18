@@ -155,7 +155,7 @@ draw(void)
 			0.0, 1.0, 0.0);
 		*/
 
-		cout << "viewer_dir: " << maze->viewer_dir << endl;
+		// cout << "viewer_dir: " << maze->viewer_dir << endl;
 		
 		/*
 		gluLookAt(viewer_pos[Maze::X], viewer_pos[Maze::Y], viewer_pos[Maze::Z],
