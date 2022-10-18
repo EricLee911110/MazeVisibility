@@ -701,17 +701,13 @@ void myMatrixMul(float* vec, float* matrix) {
 }
 
 void Maze::
-Draw_Wall(float* start, float* end, float* color) {
+Draw_Wall(float* start, float* end, float* color, LineSeg left_frustum, LineSeg right_frustum) {
 	myMatrixMul(start, transform);
 	myMatrixMul(start, view);
 
 
 	myMatrixMul(end, transform);
 	myMatrixMul(end, view);
-
-
-	LineSeg left_frustum(my_near * tan(To_Radians(viewer_fov * 0.5f)), -my_near, my_far * tan(To_Radians(viewer_fov * 0.5f)), -my_far);
-	LineSeg right_frustum(-my_far * tan(To_Radians(viewer_fov * 0.5f)), -my_far, -my_near * tan(To_Radians(viewer_fov * 0.5f)), -my_near);
 
 	// cout << "left_frustum: " << left_frustum.start[0] << " " << left_frustum.start[1] << " " << left_frustum.end[0] << " " << left_frustum.end[1] << endl;
 	// cout << "right_frustum: " << right_frustum.start[0] << " " << right_frustum.start[1] << " " << right_frustum.end[0] << " " << right_frustum.end[1] << endl;
@@ -878,6 +874,8 @@ divideW(float* A) {
 }
 
 
+
+
 //**********************************************************************
 //
 // * Draws the first-person view of the maze. It is passed the focal distance.
@@ -939,24 +937,30 @@ Draw_View(const float focal_dist)
 	cout << view[12] << " " << view[13] << " " << view[14] << " " << view[15] << endl;
 	*/
 
+	
+
+	// This is the one that will work for single cell
 	for (int i = 0; i < num_edges; i++) {
 
 		float start[4] = { edges[i]->endpoints[0]->posn[Y], 1.0f, edges[i]->endpoints[0]->posn[X], 1.0f };
 		float end[4] = { edges[i]->endpoints[1]->posn[Y], 1.0f, edges[i]->endpoints[1]->posn[X], 1.0f };
 		float color[3] = { edges[i]->color[0], edges[i]->color[1], edges[i]->color[2] };
 
+		LineSeg left_frustum(my_near * tan(To_Radians(viewer_fov * 0.5f)), -my_near, my_far * tan(To_Radians(viewer_fov * 0.5f)), -my_far);
+		LineSeg right_frustum(-my_far * tan(To_Radians(viewer_fov * 0.5f)), -my_far, -my_near * tan(To_Radians(viewer_fov * 0.5f)), -my_near);
 
 
 		if (edges[i]->opaque) {
 
 			//std::cout << glm::to_string(view) << std::endl;
 
-			Draw_Wall(start, end, color);
+			Draw_Wall(start, end, color, left_frustum, right_frustum);
 		}
 
 
 
 	}
+	
 
 	/* clipping successfully
 

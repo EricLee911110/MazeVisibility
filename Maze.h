@@ -82,7 +82,7 @@ class Maze {
 			float center3Dx, float center3Dy, float center3Dz,
 			float upVector3Dx, float upVector3Dy, float upVector3Dz);
 
-		void Draw_Wall(float* start, float* end, float* color);
+		void Draw_Wall(float* start, float* end, float* color, LineSeg left_frustum, LineSeg right_frustum);
 		void divideW(float* A);
 		
 		
