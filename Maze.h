@@ -81,6 +81,9 @@ class Maze {
 		static void myLookAt(float camPosition3Dx, float camPosition3Dy, float camPosition3Dz,
 			float center3Dx, float center3Dy, float center3Dz,
 			float upVector3Dx, float upVector3Dy, float upVector3Dz);
+
+		void Draw_Wall(float* start, float* end, float* color);
+		void divideW(float* A);
 		
 		
 		// Set the viewer's location 

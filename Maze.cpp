@@ -700,56 +700,48 @@ void myMatrixMul(float* vec, float* matrix) {
 
 }
 
-void Draw_Wall(LineSeg wall, LineSeg L, LineSeg R) {
-	
-	float start[4] = {wall.start[1], 1.0f, wall.start[0], 1.0f};
-	float end[4] = {wall.end[1], 1.0f, wall.end[0], 1.0f};
-
-	cout << "before view start: " << start[0] << " " << start[2] << endl;
-	cout << "before view end: " << end[0] << " " << end[2] << endl;
-
-	
+void Maze::
+Draw_Wall(float* start, float* end, float* color) {
+	myMatrixMul(start, transform);
 	myMatrixMul(start, view);
+
+
+	myMatrixMul(end, transform);
 	myMatrixMul(end, view);
 
-	cout << "after view start: " << start[0] << " " << start[2] << endl;
-	cout << "after view end: " << end[0] << " " << end[2] << endl;
 
-	myMatrixMul(start, projection);
-	myMatrixMul(end, projection);
+	LineSeg left_frustum(my_near * tan(To_Radians(viewer_fov * 0.5f)), -my_near, my_far * tan(To_Radians(viewer_fov * 0.5f)), -my_far);
+	LineSeg right_frustum(-my_far * tan(To_Radians(viewer_fov * 0.5f)), -my_far, -my_near * tan(To_Radians(viewer_fov * 0.5f)), -my_near);
 
-	cout << "after projection start: " << start[0] << " " << start[2] << endl;
-	cout << "after projection end: " << end[0] << " " << end[2] << endl;
+	cout << "left_frustum: " << left_frustum.start[0] << " " << left_frustum.start[1] << " " << left_frustum.end[0] << " " << left_frustum.end[1] << endl;
+	cout << "right_frustum: " << right_frustum.start[0] << " " << right_frustum.start[1] << " " << right_frustum.end[0] << " " << right_frustum.end[1] << endl;
+	cout << "start: " << start[0] << " " << start[1] << " " << start[2] << endl;
+	cout << "end: " << end[0] << " " << start[1] << " " << end[2] << endl;
 
-	/*
-	if (!clip(L, start, end) || !clip(R, start, end)) return;
+	if (clip(left_frustum, start, end) && clip(right_frustum, start, end)) {
+		cout << "start clipping: " << start[0] << " " << start[1] << " " << start[2] << endl;
+		cout << "end clipping: " << end[0] << " " << start[1] << " " << end[2] << endl;
 
+		myMatrixMul(start, projection);
+		myMatrixMul(end, projection);
+		cout << "start projection: " << start[0] << " " << start[1] << " " << start[2] << endl;
+		cout << "end projection: " << end[0] << " " << start[1] << " " << end[2] << endl;
 
-	cout << "after clipping start: " << start[0] << " " << start[2] << endl;
-	cout << "after clipping end: " << end[0] << " " << end[2] << endl;
+		if (start[3] < my_far && end[3] < my_far) {
+			divideW(start);
+			divideW(end);
+			cout << "start divideW: " << start[0] << " " << start[1] << " " << start[2] << endl;
+			cout << "end divideW: " << end[0] << " " << start[1] << " " << end[2] << endl;
+			glBegin(GL_POLYGON);
+			glColor3f(color[0], color[1], color[2]);
 
-	start = projection * start;
-	end = projection * end;
-	*/
-
-	
-
-
-	glBegin(GL_POLYGON);
-	glColor3f(0.0f, 1.0f, 0.0f);
-
-	glVertex4f(start[0], -1, start[2], 1);
-	glVertex4f(end[0], -1, end[2], 1);
-	glVertex4f(end[0], 1, end[2], 1);
-	glVertex4f(start[0], 1, start[2], 1);
-
-	/*
-	glVertex2f(start[0], start[1]);
-	glVertex2f(end[0], end[1]);
-	glVertex2f(end[0], -end[1]);
-	glVertex2f(start[0], -start[1]);
-	*/
-	glEnd();
+			glVertex2f(start[0], start[1]);
+			glVertex2f(end[0], end[1]);
+			glVertex2f(end[0], -end[1]);
+			glVertex2f(start[0], -start[1]);
+			glEnd();
+		}
+	}
 
 }
 
@@ -877,7 +869,8 @@ myLookAt(float camPosition3Dx, float camPosition3Dy, float camPosition3Dz,
 	
 }
 
-void divideW(float* A) {
+void Maze::
+divideW(float* A) {
 	A[0] = A[0] / A[3];
 	A[1] = A[1] / A[3];
 	A[2] = A[2] / A[3];
@@ -946,9 +939,27 @@ Draw_View(const float focal_dist)
 	cout << view[12] << " " << view[13] << " " << view[14] << " " << view[15] << endl;
 	*/
 
-	
+	for (int i = 0; i < num_edges; i++) {
 
-	
+		float start[4] = { edges[i]->endpoints[0]->posn[Y], 1.0f, edges[i]->endpoints[0]->posn[X], 1.0f };
+		float end[4] = { edges[i]->endpoints[1]->posn[Y], 1.0f, edges[i]->endpoints[1]->posn[X], 1.0f };
+		float color[3] = { edges[i]->color[0], edges[i]->color[1], edges[i]->color[2] };
+
+
+
+		if (edges[i]->opaque) {
+
+			//std::cout << glm::to_string(view) << std::endl;
+
+			Draw_Wall(start, end, color);
+		}
+
+
+
+	}
+
+	/* clipping successfully
+
 	float start[4] = { 6, 1, 0, 1 };
 	float end[4] = { 6, 1, 10, 1 };
 
@@ -993,6 +1004,7 @@ Draw_View(const float focal_dist)
 		}
 	}
 
+	*/
 	
 
 	
@@ -1031,7 +1043,7 @@ Draw_View(const float focal_dist)
 	Draw_Wall(wall, left_frustum, right_frustum);
 	*/
 	
-	/*
+	/*  Basic drawing wall using 3f
 	for (int i = 0; i < num_edges; i++) {
 
 		glm::vec4 edge_start(edges[i]->endpoints[0]->posn[Y], 1.0f, edges[i]->endpoints[0]->posn[X], 1.0f);
