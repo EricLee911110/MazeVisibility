@@ -656,14 +656,18 @@ set_aspect_from_MazeWindow(float aspect_from_MazeWindow) {
 	// cout << "aspect set!!: " << aspect << endl;
 }
 
-bool clip(LineSeg frustum_side, glm::vec4& start, glm::vec4& end) {
-	char s_side = frustum_side.Point_Side(start[0], start[2]);
-	char e_side = frustum_side.Point_Side(end[0], end[2]);
+bool clip(LineSeg frustum_side, float* start, float* end) {
+	cout << "you just called clip function" << endl;
+
+	int s_side = frustum_side.Point_Side(start[0], start[2]);
+	int e_side = frustum_side.Point_Side(end[0], end[2]);
+	cout << "start_side: " << s_side << " end_side: " << e_side << endl;
 	if (s_side == 1) {		// 1 if right, start at right
 		if (e_side == 0) {	// 0 if left  // start right, end left
 			float percent = frustum_side.Cross_Param(LineSeg(start[0], start[2], end[0], end[2]));
 			end[0] = frustum_side.start[0] + (frustum_side.end[0] - frustum_side.start[0]) * percent;
 			end[2] = frustum_side.start[1] + (frustum_side.end[1] - frustum_side.start[1]) * percent;
+			
 		}
 	}
 	else if (e_side == 1) {		// start is left, end is right
@@ -675,6 +679,7 @@ bool clip(LineSeg frustum_side, glm::vec4& start, glm::vec4& end) {
 		return false;
 	}
 	return true;
+	
 }
 
 void myMatrixMul(float* vec, float* matrix) {
@@ -811,7 +816,7 @@ myLookAt(float camPosition3Dx, float camPosition3Dy, float camPosition3Dz,
 {
 	cout << endl;
 	cout << "camPosition: " << camPosition3Dx << " " << camPosition3Dy << " " << camPosition3Dz << endl;
-	cout << "center: " << center3Dx << " " << center3Dy << " " << center3Dz << endl;
+	// cout << "center: " << center3Dx << " " << center3Dy << " " << center3Dz << endl;
 
 	float forward[3], side[3], up[3];
 	
@@ -822,17 +827,17 @@ myLookAt(float camPosition3Dx, float camPosition3Dy, float camPosition3Dz,
 	
 	NormalizeVector(forward);
 
-	cout << "forward: " << forward[0] << " " << forward[1] << " " << forward[2] << endl;
+	// cout << "forward: " << forward[0] << " " << forward[1] << " " << forward[2] << endl;
 
 	float tmp[3] = { upVector3Dx ,upVector3Dy, upVector3Dz };
 	myCross(side, forward, tmp);
 	NormalizeVector(side);
 
-	cout << "side: " << side[0] << " " << side[1] << " " << side[2] << endl;
+	// cout << "side: " << side[0] << " " << side[1] << " " << side[2] << endl;
 
 	myCross(up, side, forward);
 
-	cout << "up: " << up[0] << " " << up[1] << " " << up[2] << endl;
+	// cout << "up: " << up[0] << " " << up[1] << " " << up[2] << endl;
 	
 	view[0] = side[0];
 	view[4] = side[1];
@@ -872,6 +877,13 @@ myLookAt(float camPosition3Dx, float camPosition3Dy, float camPosition3Dz,
 	
 }
 
+void divideW(float* A) {
+	A[0] = A[0] / A[3];
+	A[1] = A[1] / A[3];
+	A[2] = A[2] / A[3];
+	A[3] = A[3] / A[3];
+}
+
 
 //**********************************************************************
 //
@@ -905,7 +917,7 @@ Draw_View(const float focal_dist)
 	glLoadIdentity();
 
 	myPerspective(viewer_fov, aspect, my_near, my_far);
-	glMultMatrixf(projection);
+	//glMultMatrixf(projection);
 
 	//glLoadMatrixf(projection);
 	
@@ -923,25 +935,87 @@ Draw_View(const float focal_dist)
 		viewer_pos[1],
 		viewer_pos[2] + cos(To_Radians(viewer_dir)),
 		0.0, 1.0, 0.0);
-	glMultMatrixf(view);		// view is actually rotate
-	glMultMatrixf(transform);
-
+	//glMultMatrixf(view);		// view is actually rotate
+	//glMultMatrixf(transform);
+	
+	
+	/*
 	cout << view[0] << " " << view[1] << " " << view[2] << " " << view[3] << endl;
 	cout << view[4] << " " << view[5] << " " << view[6] << " " << view[7] << endl;
 	cout << view[8] << " " << view[9] << " " << view[10] << " " << view[11] << endl;
 	cout << view[12] << " " << view[13] << " " << view[14] << " " << view[15] << endl;
+	*/
+
+	
+
+	
+	float start[4] = { 6, 1, 0, 1 };
+	float end[4] = { 6, 1, 10, 1 };
+
+	myMatrixMul(start, transform);
+	myMatrixMul(start, view);
+	
+
+	myMatrixMul(end, transform);
+	myMatrixMul(end, view);
+
+	
+	LineSeg left_frustum(my_near * tan(To_Radians(viewer_fov * 0.5f)), -my_near, my_far * tan(To_Radians(viewer_fov * 0.5f)), -my_far);
+	LineSeg right_frustum(-my_far * tan(To_Radians(viewer_fov * 0.5f)), -my_far, -my_near * tan(To_Radians(viewer_fov * 0.5f)), -my_near);
+
+	cout << "left_frustum: " << left_frustum.start[0] << " " << left_frustum.start[1] << " " << left_frustum.end[0] << " " << left_frustum.end[1] << endl;
+	cout << "right_frustum: " << right_frustum.start[0] << " " << right_frustum.start[1] << " " << right_frustum.end[0] << " " << right_frustum.end[1] << endl;
+	cout << "start: " << start[0] << " " << start[1] << " " << start[2] << endl;
+	cout << "end: " << end[0] << " " << start[1] << " " << end[2] << endl;
+
+	if (clip(left_frustum, start, end) && clip(right_frustum, start, end)) {
+		cout << "start clipping: " << start[0] << " " << start[1] << " " << start[2] << endl;
+		cout << "end clipping: " << end[0] << " " << start[1] << " " << end[2] << endl;
+
+		myMatrixMul(start, projection);
+		myMatrixMul(end, projection);
+		cout << "start projection: " << start[0] << " " << start[1] << " " << start[2] << endl;
+		cout << "end projection: " << end[0] << " " << start[1] << " " << end[2] << endl;
+
+		if (start[3] < my_far && end[3] < my_far) {
+			divideW(start);
+			divideW(end);
+			cout << "start divideW: " << start[0] << " " << start[1] << " " << start[2] << endl;
+			cout << "end divideW: " << end[0] << " " << start[1] << " " << end[2] << endl;
+			glBegin(GL_POLYGON);
+			glColor3f(0.0f, 1.0f, 0.0f);
+
+			glVertex2f(start[0], start[1]);
+			glVertex2f(end[0], end[1]);
+			glVertex2f(end[0], -end[1]);
+			glVertex2f(start[0], -start[1]);
+			glEnd();
+		}
+	}
+
 	
 
 	
 
-	glBegin(GL_POLYGON);
-	glColor3f(0.0f, 1.0f, 0.0f);
 
-	glVertex3f(0, -1, 0);
-	glVertex3f(6, -1, 0);
-	glVertex3f(6, 1, 0);
-	glVertex3f(0, 1, 0);
-	glEnd();
+
+	
+
+	/*
+	if (!clip(left_frustum, start, end) || !clip(right_frustum, start, end)) {
+		glBegin(GL_POLYGON);
+		glColor3f(0.0f, 1.0f, 0.0f);
+
+		glVertex2f(start[0], start[1]);
+		glVertex2f(end[0], end[1]);
+		glVertex2f(end[0], -end[1]);
+		glVertex2f(start[0], -start[1]);
+		glEnd();
+	}
+	*/
+
+
+	
 	
 
 	

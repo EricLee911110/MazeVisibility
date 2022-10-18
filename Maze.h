@@ -74,7 +74,6 @@ class Maze {
 	public:
 		// A big ******* wall comming right up
 
-		bool clip(LineSeg frustum_side, glm::vec4& start, glm::vec4& end);
 		static void set_aspect_from_MazeWindow(float aspect_from_MazeWindow);
 
 		// Perspective in Maze.cpp
