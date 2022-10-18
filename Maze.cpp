@@ -874,7 +874,76 @@ divideW(float* A) {
 }
 
 
+void Maze::
+draw_cell(Cell* now_cell, LineSeg L, LineSeg R) {
+	for (int i = 0; i < 4; i++) {
+		float start[4] = { now_cell->edges[i]->endpoints[0]->posn[Y], 1.0f, now_cell->edges[i]->endpoints[0]->posn[X], 1.0f };
+		float end[4] = { now_cell->edges[i]->endpoints[1]->posn[Y], 1.0f, now_cell->edges[i]->endpoints[1]->posn[X], 1.0f };
+		float color[3] = { now_cell->edges[i]->color[0], now_cell->edges[i]->color[1], now_cell->edges[i]->color[2] };
+		
+		myMatrixMul(start, transform);
+		myMatrixMul(start, view);
 
+
+		myMatrixMul(end, transform);
+		myMatrixMul(end, view);
+
+		if (clip(L, start, end) && clip(R, start, end)) {
+			// cout << "start clipping: " << start[0] << " " << start[1] << " " << start[2] << endl;
+			// cout << "end clipping: " << end[0] << " " << start[1] << " " << end[2] << endl;
+
+			if (now_cell->edges[i]->opaque) {
+				myMatrixMul(start, projection);
+				myMatrixMul(end, projection);
+				// cout << "start projection: " << start[0] << " " << start[1] << " " << start[2] << endl;
+				// cout << "end projection: " << end[0] << " " << start[1] << " " << end[2] << endl;
+
+				if (start[3] < my_far && end[3] < my_far) {
+					divideW(start);
+					divideW(end);
+					// cout << "start divideW: " << start[0] << " " << start[1] << " " << start[2] << endl;
+					// cout << "end divideW: " << end[0] << " " << start[1] << " " << end[2] << endl;
+					glBegin(GL_POLYGON);
+					glColor3f(color[0], color[1], color[2]);
+
+					glVertex2f(start[0], start[1]);
+					glVertex2f(end[0], end[1]);
+					glVertex2f(end[0], -end[1]);
+					glVertex2f(start[0], -start[1]);
+					glEnd();
+				}
+			}
+			else {		// transparent
+				if (now_cell->edges[i]->Neighbor(now_cell) != NULL) {
+					float pre_Lx = 0.0f, pre_Rx = 0.0f, pre_Ly = 0.0f, pre_Ry = 0.0f; 
+					float Lx = pre_Lx, Rx = pre_Rx, Ly = pre_Ly, Ry = pre_Ry;
+
+					LineSeg midline(0.0f, 0.0f, (start[0] + end[0]) * 0.5, (start[2] + end[2]) * 0.5);
+					if (midline.Point_Side(start[0], start[2]) == 0 && midline.Point_Side(end[0], end[2]) == 1) {
+						Lx = start[0];
+						Ly = start[2];
+						Rx = end[0];
+						Ry = end[2];
+					}
+					else if (midline.Point_Side(start[0], start[2]) == 1 && midline.Point_Side(end[0], end[2]) == 0) {
+						Lx = end[0];
+						Ly = end[2];
+						Rx = start[0];
+						Ry = start[2];
+					}
+					pre_Lx = Lx;
+					pre_Rx = Rx;
+					pre_Ly = Ly;
+					pre_Ry = Ry;
+					LineSeg newL(Lx, Ly, Lx / Ly * -my_far, -my_far);
+					LineSeg newR(Rx / Ry * -my_far, -my_far, Rx, Ry);
+					
+					draw_cell(now_cell->edges[i]->Neighbor(now_cell), newL, newR);
+				}
+			}
+		}
+	}
+}
 
 //**********************************************************************
 //
@@ -902,7 +971,7 @@ Draw_View(const float focal_dist)
 
 	float viewer_pos[3] = { viewer_posn[Maze::Y], 0.0f, viewer_posn[Maze::X] };
 
-	
+
 	// glLoadMatrix(GL_PROJECTION);
 	// glLoadIdentity();
 	glLoadIdentity();
@@ -911,11 +980,11 @@ Draw_View(const float focal_dist)
 	//glMultMatrixf(projection);
 
 	//glLoadMatrixf(projection);
-	
+
 	/*
 	gluLookAt(viewer_pos[0], viewer_pos[1], viewer_pos[2],
 		viewer_pos[0] + sin(To_Radians(viewer_dir)),
-		viewer_pos[1], 
+		viewer_pos[1],
 		viewer_pos[2] + cos(To_Radians(viewer_dir)),
 		0.0, 1.0, 0.0);
 
@@ -928,8 +997,8 @@ Draw_View(const float focal_dist)
 		0.0, 1.0, 0.0);
 	//glMultMatrixf(view);		// view is actually rotate
 	//glMultMatrixf(transform);
-	
-	
+
+
 	/*
 	cout << view[0] << " " << view[1] << " " << view[2] << " " << view[3] << endl;
 	cout << view[4] << " " << view[5] << " " << view[6] << " " << view[7] << endl;
@@ -937,9 +1006,14 @@ Draw_View(const float focal_dist)
 	cout << view[12] << " " << view[13] << " " << view[14] << " " << view[15] << endl;
 	*/
 
-	
+	for (int i = 0; i < num_cells; i++) {
+		draw_cell(cells[i],
+			LineSeg(my_near * tan(To_Radians(viewer_fov * 0.5f)), -my_near, my_far * tan(To_Radians(viewer_fov * 0.5f)), -my_far),
+			LineSeg(-my_far * tan(To_Radians(viewer_fov * 0.5f)), -my_far, -my_near * tan(To_Radians(viewer_fov * 0.5f)), -my_near));
+	}
 
-	// This is the one that will work for single cell
+
+	/* This is the one that will work for single cell
 	for (int i = 0; i < num_edges; i++) {
 
 		float start[4] = { edges[i]->endpoints[0]->posn[Y], 1.0f, edges[i]->endpoints[0]->posn[X], 1.0f };
@@ -956,10 +1030,8 @@ Draw_View(const float focal_dist)
 
 			Draw_Wall(start, end, color, left_frustum, right_frustum);
 		}
-
-
-
 	}
+	*/
 	
 
 	/* clipping successfully
@@ -1074,9 +1146,6 @@ Draw_View(const float focal_dist)
 
 
 	// std::cout << cells[0]->edges[0]->endpoints[0] << cells[0]->edges[0]->endpoints[1] << std::endl;
-
-	
-	
 
 }
 

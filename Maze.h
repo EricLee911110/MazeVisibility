@@ -84,7 +84,7 @@ class Maze {
 
 		void Draw_Wall(float* start, float* end, float* color, LineSeg left_frustum, LineSeg right_frustum);
 		void divideW(float* A);
-		
+		void draw_cell(Cell* now_cell, LineSeg L, LineSeg R);
 		
 		// Set the viewer's location 
 		void	Set_View_Posn(float x, float y, float z);
